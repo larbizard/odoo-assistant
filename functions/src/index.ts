@@ -19,11 +19,11 @@ const app = dialogflow({ debug: true});
 const Odoo = require('odoo-xmlrpc');
 
 const odoo = new Odoo({
-    url: 'http://706940-13-0-9c3895.runbot14.odoo.com/web/login?db%3D706940-13-0-9c3895-all%26login%3Dadmin%26redirect%3D/web?debug=1',
+    url: 'https://lgharib-odoo-assistant.odoo.com/',
     port: '80',
-    db: '706940-13-0-9c3895-all',
-    username: 'admin',
-    password: 'admin'
+    db: 'lgharib-odoo-assistant-master-726081',
+    username: 'larbizard@gmail.com',
+    password: 'odooassistant'
 });
 
 
@@ -70,10 +70,10 @@ async function createLead() {
 		else{
 		    console.log('Connected to Odoo server.');
 		    const inParams = [];
-		    inParams.push({'name': 'New Contact Savoir-Faire Linux'})
+		    inParams.push({'name': 'New Lead Savoir-Faire Linux'})
 		    const params = [];
 		    params.push(inParams);
-		    odoo.execute_kw('res.partner', 'create', params, function (err:any, value:any) {
+		    odoo.execute_kw('crm.lead', 'create', params, function (err:any, value:any) {
 		        if (err) { 
 		        	console.log(err);
 		        }
