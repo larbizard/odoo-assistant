@@ -1,0 +1,5 @@
+{
+    "LEAD_WAS_CREATE_TEXT": "L'opportunité %s a été créé avec succès.",
+    "LEAD_WAS_CREATE_SPEECH": "L'opportunité %s a été créée avec %s pourcent de chance de gain.",
+    "LEAD_OPEN_TEXT": "Ouvrir l'opportunité %s dans Odoo"
+}

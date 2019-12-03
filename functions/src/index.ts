@@ -13,6 +13,12 @@ import * as functions from 'firebase-functions';
 // Google Assistant deps
 import { dialogflow, SimpleResponse, BasicCard, Button, Image } from 'actions-on-google';
 const app = dialogflow({ debug: true});
+const i18n = require("i18n");	
+i18n.configure({
+	directory: __dirname + '/locales',
+	defaultLocale: 'en-US',
+	objectNotation: true,
+});
 
 //Odoo XML-RPC ts https://www.npmjs.com/package/odoo-xmlrpc
 
@@ -28,84 +34,88 @@ const odoo = new Odoo({
 
 
 app.intent('The name of the lead - probability - no', async (conv, {lead_name, percentage}) => {
-	return createLead(String(lead_name), 
-	String(percentage).replace('%', ''), 
-	'', ''
-	).then(function(data) {
-		conv.close(new SimpleResponse({
-			text: `Lead ${lead_name} created`,
-			speech: `The lead ${lead_name} was created with ${String(percentage).replace('%', '')}% of chance to win it.`, 
-		}));
-		conv.close(new BasicCard({
-				text: `Lead ${lead_name} created`,
-				image: new Image({
-				url: `https://kioteservices.com/wp-content/uploads/2017/12/odoo_logo.png`,
-				alt: `Odoo Logo`,
-			}),
-			buttons: new Button({
-				title: `Open ${lead_name} lead`,
-				url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(data)}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
-			})
-		}));
-	}).catch(function(){
-		conv.close(new SimpleResponse({
-			text: `Error`,
-			speech: `Error`, 
-		}));
-	});
-		
-});
-
-app.intent('The name of the lead - probability - yes - contact name - no', async (conv, {lead_name, percentage, contact_name}) => {
-	return createLead(String(lead_name), 
-	String(percentage).replace('%', ''), 
-	String(contact_name),
-	''
-	).then(function(data) {
-		conv.close(new SimpleResponse({
-			text: `Lead ${lead_name} created`,
-			speech: `The lead ${lead_name} was created with ${String(percentage).replace('%', '')}% of chance to win it.`, 
-		}));
-		conv.close(new BasicCard({
-				text: `Lead ${lead_name} created`,
-				image: new Image({
-				url: `https://kioteservices.com/wp-content/uploads/2017/12/odoo_logo.png`,
-				alt: `Odoo Logo`,
-			}),
-			buttons: new Button({
-				title: `Open ${lead_name} lead`,
-				url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(data)}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
-			})
-		}));
-	}).catch(function(){
-		conv.close(new SimpleResponse({
-			text: `Error`,
-			speech: `Error`, 
-		}));
-	});
-		
-});
-
-
-// Helper Function for scrapping a webpage
-function createLead(lead_name:string, percentage:string, contact_name:string, phone_number:string) {
-	let new_percentage = percentage;
-	if(Number(percentage)>100){
-		new_percentage = '100;';
-	}else if(Number(percentage)<0){
-		new_percentage = '0';
+	i18n.setLocale(conv.user.locale);
+	const parameters = {
+		'name': String(lead_name), 
+		'probability': validatePercentage(String(percentage)),
 	}
+
+	return createLead(parameters).then(function(data) {
+		buildPhoneResult(conv, String(lead_name), String(data), String(percentage));
+	}).catch(function(){
+		conv.close(new SimpleResponse({
+			text: `Error`,
+			speech: `Error`, 
+		}));
+	});
+		
+});
+
+app.intent('The name of the lead - probability - yes - contact name - no', async (conv, {lead_name, percentage, contact_name, given_name}) => {
+	i18n.setLocale(conv.user.locale);
+	const parameters = {
+		'name': String(lead_name), 
+		'probability': validatePercentage(String(percentage)), 
+		'contact_name': String(given_name) + ' ' + String(contact_name)
+	}
+	
+	return createLead(parameters).then(function(data) {
+		buildPhoneResult(conv, String(lead_name), String(data), String(percentage));
+	}).catch(function(){
+		conv.close(new SimpleResponse({
+			text: `Error`,
+			speech: `Error`, 
+		}));
+	});
+		
+});
+
+
+app.intent('The name of the lead - probability - yes - contact name - yes - phonenumber', async (conv, {lead_name, percentage, contact_name, given_name, phone_number}) => {
+	i18n.setLocale(conv.user.locale);
+	const parameters = {
+		'name': String(lead_name), 
+		'probability': validatePercentage(String(percentage)), 
+		'contact_name': String(given_name) + ' ' + String(contact_name),
+		'phone': String(phone_number)
+	}
+	
+	return createLead(parameters).then(function(data) {
+		buildPhoneResult(conv, String(lead_name), String(data), String(percentage));
+	}).catch(function(){
+		conv.close(new SimpleResponse({
+			text: `Error`,
+			speech: `Error`, 
+		}));
+	});
+		
+});
+
+function buildPhoneResult(conv:any, lead_name:string, data:string, percentage:string){
+	conv.close(new SimpleResponse({
+		text: i18n.__('LEAD_WAS_CREATE_TEXT', lead_name),
+		speech: i18n.__('LEAD_WAS_CREATE_SPEECH', lead_name, String(percentage).replace('%', '')) 
+	}));
+	conv.close(new BasicCard({
+			text: i18n.__('LEAD_WAS_CREATE_TEXT', lead_name),
+			image: new Image({
+			url: `https://kioteservices.com/wp-content/uploads/2017/12/odoo_logo.png`,
+			alt: `Odoo Logo`,
+		}),
+		buttons: new Button({
+			title: i18n.__('LEAD_OPEN_TEXT', lead_name),
+			url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(data)}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
+		})
+	}));
+}
+
+function createLead(parameters:any) {
 	return new Promise((resolve, reject)=>{
 		odoo.connect(  function (error:any) {
 			if (error) { reject(); }
 			console.log('Connected to Odoo server.');
 			const inParams = [];
-			inParams.push({
-				'name': lead_name, 
-				'probability': new_percentage,
-				'contact_name': contact_name,
-				'phone': phone_number
-			});
+			inParams.push(parameters);
 			const params = [];
 			params.push(inParams);
 			odoo.execute_kw('crm.lead', 'create', params, function (err:any, value:any) {
@@ -117,6 +127,16 @@ function createLead(lead_name:string, percentage:string, contact_name:string, ph
 	});
 }
 
+function validatePercentage(percentage:string){
+	let new_percentage = percentage;
+	new_percentage = String(new_percentage).replace('%', '');
+	if(Number(percentage)>100){
+		new_percentage = '100;';
+	}else if(Number(percentage)<0){
+		new_percentage = '0';
+	}
+	return new_percentage;
+}
 
 // Export the Cloud Functions
 export const fulfillment = functions.https.onRequest(app);
