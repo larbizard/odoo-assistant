@@ -8,8 +8,8 @@ import xmlrpc.client
 
 common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(url))
 uid = common.authenticate(db, username, password, {})
-#import ipdb; ipdb.set_trace()
 models = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(url))
+import ipdb; ipdb.set_trace()
 models.execute_kw(db, uid, password,
     'crm.lead', 'create',
     [{

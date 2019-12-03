@@ -18,6 +18,10 @@ i18n.configure({
 	directory: __dirname + '/locales',
 	defaultLocale: 'en-US',
 	objectNotation: true,
+	fallbacks: {
+		'es-419': 'es',
+		'es-ES': 'es'
+	}
 });
 
 //Odoo XML-RPC ts https://www.npmjs.com/package/odoo-xmlrpc
@@ -91,6 +95,21 @@ app.intent('The name of the lead - probability - yes - contact name - yes - phon
 		
 });
 
+app.intent('Search - lead', async (conv, {lead_name}) => {
+	i18n.setLocale(conv.user.locale);
+	const parameters = [['name', '=', String(lead_name)]]
+	
+	return searchLead(parameters).then(function(data) {
+		buildPhoneSearchResult(conv, String(lead_name), String(data));
+	}).catch(function(){
+		conv.close(new SimpleResponse({
+			text: `Error`,
+			speech: `Error`, 
+		}));
+	});
+		
+});
+
 function buildPhoneResult(conv:any, lead_name:string, data:string, percentage:string){
 	conv.close(new SimpleResponse({
 		text: i18n.__('LEAD_WAS_CREATE_TEXT', lead_name),
@@ -109,6 +128,40 @@ function buildPhoneResult(conv:any, lead_name:string, data:string, percentage:st
 	}));
 }
 
+function buildPhoneSearchResult(conv:any, lead_name:string, data:any){
+	conv.close(new SimpleResponse({
+		text: i18n.__('LEAD_SEARCH_TEXT', lead_name),
+		speech: i18n.__('LEAD_SEARCH_TEXT', lead_name) 
+	}));
+
+	data.array.forEach((element: { name: any; id: any; }) => {
+		conv.close(new BasicCard({
+			text: i18n.__('LEAD_WAS_CREATE_TEXT', element.name),
+			image: new Image({
+			url: `https://kioteservices.com/wp-content/uploads/2017/12/odoo_logo.png`,
+			alt: `Odoo Logo`,
+		}),
+		buttons: new Button({
+			title: i18n.__('LEAD_OPEN_TEXT', element.name),
+			url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(element.id)}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
+		})
+	}));
+	});
+
+	conv.close(new BasicCard({
+			text: i18n.__('LEAD_WAS_CREATE_TEXT', lead_name),
+			image: new Image({
+			url: `https://kioteservices.com/wp-content/uploads/2017/12/odoo_logo.png`,
+			alt: `Odoo Logo`,
+		}),
+		buttons: new Button({
+			title: i18n.__('LEAD_OPEN_TEXT', lead_name),
+			url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(data)}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
+		})
+	}));
+}
+
+
 function createLead(parameters:any) {
 	return new Promise((resolve, reject)=>{
 		odoo.connect(  function (error:any) {
@@ -122,6 +175,34 @@ function createLead(parameters:any) {
 				if (err) { reject(); }
 				console.log('Result: ', value);
 				resolve(value);
+			});
+		});
+	});
+}
+
+function searchLead(parameters:any) {
+	return new Promise((resolve, reject)=>{
+		odoo.connect(  function (error:any) {
+			if (error) { reject(); }
+			console.log('Connected to Odoo server.');
+			const inParams = [];
+			inParams.push(parameters);
+			inParams.push(0);  //offset
+			inParams.push(1);  //Limit
+			const params = [];
+			params.push(inParams);
+			odoo.execute_kw('crm.lead', 'search', params, function (err:any, value:any) {
+				if (err) { reject(err); }
+				console.log('Result1: ', value);
+				const inParams2 = [];
+				inParams2.push(value); //ids
+				const params2 = [];
+				params2.push(inParams2);
+				odoo.execute_kw('crm.lead', 'read', params2, function (err2:any, value2:any) {
+					if (err2) { reject(err2); }
+					console.log('Result2: ', value2);
+					resolve(value2[0]);
+				});
 			});
 		});
 	});
