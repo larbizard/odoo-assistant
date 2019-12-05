@@ -11,7 +11,7 @@ import * as functions from 'firebase-functions';
 // import * as cheerio from 'cheerio';
 
 // Google Assistant deps
-import { dialogflow, SimpleResponse, BasicCard, Button, Image } from 'actions-on-google';
+import { dialogflow, SimpleResponse, BasicCard, Button, Image, BrowseCarousel, BrowseCarouselItem } from 'actions-on-google';
 const app = dialogflow({ debug: true});
 const i18n = require("i18n");	
 i18n.configure({
@@ -97,10 +97,19 @@ app.intent('The name of the lead - probability - yes - contact name - yes - phon
 
 app.intent('Search - lead', async (conv, {lead_name}) => {
 	i18n.setLocale(conv.user.locale);
-	const parameters = [['name', '=', String(lead_name)]]
+	const parameters = [['name', '=', String(lead_name)]];
 	
 	return searchLead(parameters).then(function(data) {
-		buildPhoneSearchResult(conv, String(lead_name), String(data));
+		console.log('Array length : ', Array(data).length);
+		if(Array(data).length>0){
+			buildPhoneSearchResult(conv, String(lead_name), data);	
+		}else{
+			conv.close(new SimpleResponse({
+				text: i18n.__('NO_DATA_FOUND', lead_name),
+				speech: i18n.__('NO_DATA_FOUND', lead_name), 
+			}));
+		}
+		
 	}).catch(function(){
 		conv.close(new SimpleResponse({
 			text: `Error`,
@@ -133,32 +142,25 @@ function buildPhoneSearchResult(conv:any, lead_name:string, data:any){
 		text: i18n.__('LEAD_SEARCH_TEXT', lead_name),
 		speech: i18n.__('LEAD_SEARCH_TEXT', lead_name) 
 	}));
-
-	data.array.forEach((element: { name: any; id: any; }) => {
-		conv.close(new BasicCard({
-			text: i18n.__('LEAD_WAS_CREATE_TEXT', element.name),
-			image: new Image({
-			url: `https://kioteservices.com/wp-content/uploads/2017/12/odoo_logo.png`,
-			alt: `Odoo Logo`,
-		}),
-		buttons: new Button({
-			title: i18n.__('LEAD_OPEN_TEXT', element.name),
-			url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(element.id)}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
-		})
-	}));
-	});
-
-	conv.close(new BasicCard({
-			text: i18n.__('LEAD_WAS_CREATE_TEXT', lead_name),
-			image: new Image({
-			url: `https://kioteservices.com/wp-content/uploads/2017/12/odoo_logo.png`,
-			alt: `Odoo Logo`,
-		}),
-		buttons: new Button({
-			title: i18n.__('LEAD_OPEN_TEXT', lead_name),
-			url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(data)}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
-		})
-	}));
+	let carrousel_items:any = [];
+	for (let entry of data) {
+		console.log('Entry: ', entry);
+		carrousel_items.push(
+			new BrowseCarouselItem({
+				title: entry['name'],
+				url: `https://lgharib-odoo-assistant.odoo.com/web?#id=${String(entry['id'])}&action=168&model=crm.lead&view_type=form&cids=1&menu_id=121`,
+				description: entry['probability'],
+				image: new Image({
+					url: 'https://larbigharib.com/wp-content/uploads/2019/12/erp.png',
+					alt: 'Odoo',
+				}),
+				footer: 'Contact: ' + entry['contact_name'],
+			})
+		);
+	}
+	conv.ask(new BrowseCarousel({
+    	items: carrousel_items,
+  	}));
 }
 
 
@@ -188,7 +190,7 @@ function searchLead(parameters:any) {
 			const inParams = [];
 			inParams.push(parameters);
 			inParams.push(0);  //offset
-			inParams.push(1);  //Limit
+			inParams.push(5);  //Limit
 			const params = [];
 			params.push(inParams);
 			odoo.execute_kw('crm.lead', 'search', params, function (err:any, value:any) {
@@ -201,7 +203,7 @@ function searchLead(parameters:any) {
 				odoo.execute_kw('crm.lead', 'read', params2, function (err2:any, value2:any) {
 					if (err2) { reject(err2); }
 					console.log('Result2: ', value2);
-					resolve(value2[0]);
+					resolve(value2);
 				});
 			});
 		});

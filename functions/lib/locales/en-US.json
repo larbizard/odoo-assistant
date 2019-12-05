@@ -2,5 +2,6 @@
     "LEAD_WAS_CREATE_TEXT": "Lead %s created",
     "LEAD_WAS_CREATE_SPEECH": "The lead %s was created with %s percent of chance to win it.",
     "LEAD_OPEN_TEXT": "Open lead %s in Odoo",
-    "LEAD_SEARCH_TEXT": "Results for %s are:"
+    "LEAD_SEARCH_TEXT": "Results for %s are:",
+    "NO_DATA_FOUND": "No data was found for %s"
 }
